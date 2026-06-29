@@ -218,43 +218,76 @@ body {
     gap: 1rem;
 }
 
-/* Theme Toggle Button */
-.action-btn-circle {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    cursor: pointer;
+/* Theme Toggle Switch */
+.theme-switch-wrapper {
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: all var(--transition-fast);
+    gap: 0.5rem;
 }
 
-.action-btn-circle:hover {
-    background: var(--bg-hover);
-    transform: scale(1.05);
+.theme-switch-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    transition: var(--transition-normal);
+    border-radius: 34px;
+}
+
+.dark-theme .slider {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--text-primary);
+    transition: var(--transition-normal);
+    border-radius: 50%;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Checked (defaults to checked in dark theme) */
+.theme-switch input:checked + .slider {
+    background: var(--gradient-primary);
+    border-color: transparent;
+}
+
+.theme-switch input:checked + .slider::before {
+    transform: translateX(22px);
+    background-color: #ffffff;
+}
+
+.theme-switch:hover .slider {
     border-color: var(--border-color-focus);
-}
-
-.dark-theme .sun-icon {
-    display: block;
-}
-.dark-theme .moon-icon {
-    display: none;
-}
-.light-theme .sun-icon {
-    display: none;
-}
-.light-theme .moon-icon {
-    display: block;
-}
-
-.sun-icon, .moon-icon {
-    width: 20px;
-    height: 20px;
 }
 
 /* Refresh Button */

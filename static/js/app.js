@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Header & Actions
     const refreshBtn = document.getElementById('refreshBtn');
     const refreshBtnText = refreshBtn.querySelector('.refresh-btn-text');
-    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeToggle = document.getElementById('themeToggle');
     const exportCsvBtn = document.getElementById('exportCsvBtn');
     
     // Search & Filters
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Event Listeners
         refreshBtn.addEventListener('click', () => fetchReleases(true));
-        themeToggleBtn.addEventListener('click', toggleTheme);
+        themeToggle.addEventListener('change', toggleTheme);
         exportCsvBtn.addEventListener('click', exportToCSV);
         retryBtn.addEventListener('click', () => fetchReleases(true));
         resetFiltersBtn.addEventListener('click', resetFilters);
@@ -97,16 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (theme === 'light') {
             document.body.classList.remove('dark-theme');
             document.body.classList.add('light-theme');
+            if (themeToggle) themeToggle.checked = false;
         } else {
             document.body.classList.remove('light-theme');
             document.body.classList.add('dark-theme');
+            if (themeToggle) themeToggle.checked = true;
         }
         localStorage.setItem('theme', theme);
     }
 
-    function toggleTheme() {
-        const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
-        const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+    function toggleTheme(e) {
+        const nextTheme = e.target.checked ? 'dark' : 'light';
         applyTheme(nextTheme);
         showToast(`Switched to ${nextTheme} theme`, 'info');
     }
