@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshBtn = document.getElementById('refreshBtn');
     const refreshBtnText = refreshBtn.querySelector('.refresh-btn-text');
     const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
     
     // Search & Filters
     const searchInput = document.getElementById('searchInput');
@@ -58,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Event Listeners
         refreshBtn.addEventListener('click', () => fetchReleases(true));
         themeToggleBtn.addEventListener('click', toggleTheme);
+        exportCsvBtn.addEventListener('click', exportToCSV);
         retryBtn.addEventListener('click', () => fetchReleases(true));
         resetFiltersBtn.addEventListener('click', resetFilters);
         
@@ -249,11 +251,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'other';
     }
 
-    function renderReleases() {
-        releasesList.innerHTML = '';
-        
-        // 1. Filter the releases
-        const filtered = releasesState.filter(release => {
+    function getFilteredReleases() {
+        return releasesState.filter(release => {
             // Category filter
             const normType = getNormalizedType(release.type);
             const matchesFilter = activeFilter === 'all' || normType === activeFilter;
@@ -266,6 +265,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 
             return matchesFilter && matchesSearch;
         });
+    }
+
+    function renderReleases() {
+        releasesList.innerHTML = '';
+        
+        // 1. Filter the releases
+        const filtered = getFilteredReleases();
 
         // 2. Update category badges based on current search & full data
         updateCategoryCounts();
@@ -395,8 +401,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const actions = document.createElement('div');
         actions.className = 'card-actions';
 
+        const copyTextBtn = document.createElement('button');
+        copyTextBtn.className = 'card-btn';
+        copyTextBtn.title = 'Copy full update text';
+        copyTextBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+            <span>Copy Text</span>
+        `;
+        copyTextBtn.addEventListener('click', () => {
+            const formattedText = `BigQuery Release (${release.date}) [${release.type.toUpperCase()}]:\n${release.description_text}\n\nLink: ${release.link}`;
+            copyToClipboard(formattedText, 'Update text copied!');
+        });
+
         const copyBtn = document.createElement('button');
         copyBtn.className = 'card-btn';
+        copyBtn.title = 'Copy original release link';
         copyBtn.innerHTML = `
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -405,11 +427,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>Copy Link</span>
         `;
         copyBtn.addEventListener('click', () => {
-            copyToClipboard(release.link);
+            copyToClipboard(release.link, 'Link copied!');
         });
 
         const tweetBtn = document.createElement('button');
         tweetBtn.className = 'card-btn card-btn-primary';
+        tweetBtn.title = 'Draft a tweet about this update';
         tweetBtn.innerHTML = `
             <svg viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
@@ -420,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openTweetModal(release);
         });
 
+        actions.appendChild(copyTextBtn);
         actions.appendChild(copyBtn);
         actions.appendChild(tweetBtn);
 
@@ -433,10 +457,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------------------------------------------------
     // CLIPBOARD ACTIONS
     // ---------------------------------------------------------
-    async function copyToClipboard(text) {
+    async function copyToClipboard(text, successMessage = 'Link copied to clipboard!') {
         try {
             await navigator.clipboard.writeText(text);
-            showToast('Link copied to clipboard!', 'success');
+            showToast(successMessage, 'success');
         } catch (err) {
             console.error('Clipboard copy failed:', err);
             // Fallback copy method
@@ -447,11 +471,63 @@ document.addEventListener('DOMContentLoaded', () => {
             textarea.select();
             try {
                 document.execCommand('copy');
-                showToast('Link copied to clipboard!', 'success');
+                showToast(successMessage, 'success');
             } catch (fallbackErr) {
-                showToast('Failed to copy link', 'error');
+                showToast('Failed to copy content', 'error');
             }
             document.body.removeChild(textarea);
+        }
+    }
+
+    // ---------------------------------------------------------
+    // EXPORT TO CSV
+    // ---------------------------------------------------------
+    function exportToCSV() {
+        const filtered = getFilteredReleases();
+        if (filtered.length === 0) {
+            showToast('No release notes found to export', 'error');
+            return;
+        }
+
+        const headers = ['ID', 'Date', 'Type', 'Link', 'Description (Plain Text)'];
+        
+        const escapeCSV = (val) => {
+            if (val === null || val === undefined) return '';
+            let str = String(val);
+            str = str.replace(/"/g, '""');
+            if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+                str = `"${str}"`;
+            }
+            return str;
+        };
+
+        const rows = filtered.map(r => [
+            r.id,
+            r.date,
+            r.type,
+            r.link,
+            r.description_text
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(escapeCSV).join(','))
+        ].join('\n');
+
+        try {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `bigquery_releases_${new Date().toISOString().slice(0, 10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(`Exported ${filtered.length} updates to CSV`, 'success');
+        } catch (err) {
+            console.error('CSV Export failed:', err);
+            showToast('Failed to export to CSV', 'error');
         }
     }
 
