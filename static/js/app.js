@@ -88,6 +88,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeTweetModal();
             }
         });
+
+        // Keyboard Shortcut: press '/' to focus search input
+        document.addEventListener('keydown', (e) => {
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                return;
+            }
+            if (e.key === '/') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        });
+
+        // Scroll to Top handler
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 400) {
+                scrollToTopBtn.classList.add('show');
+                scrollToTopBtn.classList.remove('hidden');
+            } else {
+                scrollToTopBtn.classList.remove('show');
+            }
+        });
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
     }
 
     // ---------------------------------------------------------
@@ -201,20 +228,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------------------------------------------------
     // FILTERING, SEARCHING & RENDERING
     // ---------------------------------------------------------
+    let searchDebounceTimeout = null;
     function handleSearchInput(e) {
-        searchQuery = e.target.value.toLowerCase().trim();
-        if (searchQuery.length > 0) {
+        const val = e.target.value;
+        if (val.trim().length > 0) {
             clearSearchBtn.style.display = 'block';
         } else {
             clearSearchBtn.style.display = 'none';
         }
-        renderReleases();
+        
+        clearTimeout(searchDebounceTimeout);
+        searchDebounceTimeout = setTimeout(() => {
+            searchQuery = val.toLowerCase().trim();
+            renderReleases();
+        }, 200);
     }
 
     function clearSearch() {
         searchInput.value = '';
         searchQuery = '';
         clearSearchBtn.style.display = 'none';
+        clearTimeout(searchDebounceTimeout);
         renderReleases();
         searchInput.focus();
     }
@@ -287,10 +321,32 @@ document.addEventListener('DOMContentLoaded', () => {
         emptyDisplay.classList.add('hidden');
         releasesList.classList.remove('hidden');
 
-        // 4. Render cards
+        // 4. Render cards grouped by date
+        let lastDate = null;
+        let dateGroupCardsContainer = null;
+
         filtered.forEach((release, index) => {
+            if (release.date !== lastDate) {
+                lastDate = release.date;
+
+                // Create date group sticky header
+                const dateHeader = document.createElement('div');
+                dateHeader.className = 'date-group-header';
+                dateHeader.innerHTML = `
+                    <div class="date-header-line"></div>
+                    <h3 class="date-header-text">${release.date}</h3>
+                    <div class="date-header-line"></div>
+                `;
+                releasesList.appendChild(dateHeader);
+
+                // Create cards grid/container for this date
+                dateGroupCardsContainer = document.createElement('div');
+                dateGroupCardsContainer.className = 'date-group-cards';
+                releasesList.appendChild(dateGroupCardsContainer);
+            }
+
             const card = createReleaseCardDOM(release, index);
-            releasesList.appendChild(card);
+            dateGroupCardsContainer.appendChild(card);
         });
     }
 
@@ -356,15 +412,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const titleSection = document.createElement('div');
         titleSection.className = 'card-title-section';
         
-        const date = document.createElement('span');
-        date.className = 'card-date';
-        date.textContent = release.date;
-
         const badge = document.createElement('span');
         badge.className = `card-badge badge-${normType}`;
         badge.textContent = release.type;
 
-        titleSection.appendChild(date);
         titleSection.appendChild(badge);
 
         // Selection checkbox
@@ -393,10 +444,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Body section
         const body = document.createElement('div');
         body.className = 'card-body';
-        
-        // Description html rendering (Google feed returns HTML, whichbs4 sanitized)
-        // If query is present, we can render the HTML normally. 
         body.innerHTML = release.description_html;
+
+        // Force links inside releases to open in a new tab safely
+        const links = body.querySelectorAll('a');
+        links.forEach(a => {
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener noreferrer');
+        });
+
+        // Search Term Highlighting
+        highlightDOMTextNodes(body, searchQuery);
 
         // Actions section
         const actions = document.createElement('div');
@@ -453,6 +511,36 @@ document.addEventListener('DOMContentLoaded', () => {
         card.appendChild(actions);
 
         return card;
+    }
+
+    // ---------------------------------------------------------
+    // HIGHLIGHT TEXT NODES SAFELY
+    // ---------------------------------------------------------
+    function highlightDOMTextNodes(element, query) {
+        if (!query) return;
+
+        const walk = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        let node;
+        while (node = walk.nextNode()) {
+            textNodes.push(node);
+        }
+
+        const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+
+        textNodes.forEach(node => {
+            const val = node.nodeValue;
+            if (regex.test(val)) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = val.replace(regex, '<mark class="search-highlight">$1</mark>');
+
+                const parent = node.parentNode;
+                while (tempDiv.firstChild) {
+                    parent.insertBefore(tempDiv.firstChild, node);
+                }
+                parent.removeChild(node);
+            }
+        });
     }
 
     // ---------------------------------------------------------
@@ -608,14 +696,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (remaining < 0) {
             charCountText.className = 'char-count-text danger';
             charProgressRing.style.stroke = '#ef4444';
+            charCountText.setAttribute('aria-label', `${Math.abs(remaining)} characters over limit`);
             postTweetBtn.disabled = true;
         } else if (remaining <= 20) {
             charCountText.className = 'char-count-text warning';
             charProgressRing.style.stroke = '#f59e0b';
+            charCountText.setAttribute('aria-label', `${remaining} characters remaining - warning`);
             postTweetBtn.disabled = false;
         } else {
             charCountText.className = 'char-count-text';
             charProgressRing.style.stroke = '#38bdf8';
+            charCountText.setAttribute('aria-label', `${remaining} characters remaining`);
             postTweetBtn.disabled = false;
         }
         

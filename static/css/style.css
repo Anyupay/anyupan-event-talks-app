@@ -1227,3 +1227,123 @@ body {
         border-radius: 16px;
     }
 }
+
+/* ==========================================================================
+   UX ENHANCEMENTS STYLES
+   ========================================================================== */
+
+/* Date Grouping Timeline Headers */
+.date-group-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-main);
+    padding: 0.75rem 0;
+    transition: background-color var(--transition-normal);
+}
+
+.date-group-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -50px;
+    right: -50px;
+    bottom: 0;
+    background: var(--bg-main);
+    z-index: -1;
+    transition: background-color var(--transition-normal);
+}
+
+.date-header-text {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    padding: 0 0.5rem;
+}
+
+.date-header-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.date-group-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* Scroll to Top Button */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 999;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    transition: all var(--transition-normal);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+}
+
+.scroll-to-top-btn.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.scroll-to-top-btn:hover {
+    background: var(--bg-hover);
+    transform: scale(1.08) translateY(-2px);
+    border-color: var(--border-color-focus);
+}
+
+.scroll-to-top-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Keyword Search Highlighting */
+mark.search-highlight {
+    background: rgba(245, 158, 11, 0.25);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 0.1rem 0.25rem;
+    font-weight: 600;
+}
+
+.light-theme mark.search-highlight {
+    background: rgba(245, 158, 11, 0.35);
+}
+
+/* Transitions for Skeleton/Content Loader */
+.fade-transition {
+    transition: opacity var(--transition-normal) ease;
+}
+
+.fade-out {
+    opacity: 0;
+}
+
+.fade-in {
+    opacity: 1;
+}
+
